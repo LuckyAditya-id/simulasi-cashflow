@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulasi Cashflow Alusia</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600&display=swap">
+<style>
+body{margin:0}
+/* Layout: panel asumsi di kiri (menempel saat scroll), hasil dua opsi berdampingan di kanan. Tema mengikuti identitas elprospera: biru tua dan emas. */
+:root{
+  --bg:#F2F0EC; --card:#FBFAF7; --line:#DAD6CC; --fg:#1C1C1C; --muted:#5E5E5E;
+  --navy:#27346F; --gold:#9A7727; --a:#B5862B; --b:#27346F; --ok:#2F6B3B; --warn:#8A5A00; --bad:#A32D2D;
+  --warnbg:#F6EBCF; --badbg:#F4DCDC; --okbg:#DCEBDD; --chip:#E8E4DA;
+  --font:'Jost',system-ui,-apple-system,'Segoe UI',Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#14172A; --card:#1C2038; --line:#323860; --fg:#ECEAF2; --muted:#A5A8C2;
+  --navy:#AEB9F2; --gold:#E0B85C; --a:#E0B85C; --b:#9FB0FF; --ok:#8FD19A; --warn:#E8C26A; --bad:#F29A9A;
+  --warnbg:#3A3220; --badbg:#41242A; --okbg:#1F3626; --chip:#2A3054; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#14172A; --card:#1C2038; --line:#323860; --fg:#ECEAF2; --muted:#A5A8C2;
+  --navy:#AEB9F2; --gold:#E0B85C; --a:#E0B85C; --b:#9FB0FF; --ok:#8FD19A; --warn:#E8C26A; --bad:#F29A9A;
+  --warnbg:#3A3220; --badbg:#41242A; --okbg:#1F3626; --chip:#2A3054; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:16px;line-height:1.45;
+  padding-block:24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1280px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1{font-size:34px;font-weight:500;line-height:1.1;margin:0;text-wrap:balance}
+h2{font-size:22px;font-weight:500;margin:0 0 10px;text-wrap:balance}
+h3{font-size:17px;font-weight:600;margin:0}
+.sub{color:var(--muted);margin:6px 0 0;max-width:70ch}
+.eyebrow{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--navy);font-weight:500;margin:0 0 6px}
+.grid{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:980px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px 16px 16px;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}
+@media (max-width:980px){.panel{position:static;max-height:none}}
+details{border-bottom:1px solid var(--line);padding:10px 0}
+details:last-child{border-bottom:0}
+summary{cursor:pointer;font-weight:600;font-size:16px;padding:4px 0}
+summary:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--navy);outline-offset:2px}
+.f{display:grid;grid-template-columns:1fr 84px;gap:2px 10px;align-items:center;margin-top:10px}
+.f label{font-size:14px;color:var(--muted);grid-column:1/-1}
+.f input[type=range]{width:100%;accent-color:var(--navy)}
+.f input[type=number]{width:100%;font:inherit;font-variant-numeric:tabular-nums;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+.t{display:flex;gap:10px;align-items:flex-start;margin-top:10px;font-size:14px}
+.t input{margin-top:3px;accent-color:var(--navy)}
+.t span small{display:block;color:var(--muted)}
+.note{font-size:13px;color:var(--muted);margin:8px 0 0}
+.main{display:flex;flex-direction:column;gap:20px;min-width:0}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:720px){.two{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.card.a{border-top:4px solid var(--a)} .card.b{border-top:4px solid var(--b)}
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
+.kpi small{display:block;font-size:13px;color:var(--muted)}
+.kpi b{font-size:24px;font-weight:500;font-variant-numeric:tabular-nums}
+.kpi b.neg{color:var(--bad)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:14px}
+th,td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left;white-space:normal}
+thead th{font-weight:600;color:var(--muted);font-size:13px}
+tr.tot td{font-weight:600;border-bottom:2px solid var(--line)}
+td.neg{color:var(--bad)}
+.warns{display:flex;flex-direction:column;gap:8px}
+.w{padding:9px 12px;border-radius:8px;font-size:14px;background:var(--warnbg);color:var(--fg);border-left:4px solid var(--warn)}
+.w.bad{background:var(--badbg);border-left-color:var(--bad)}
+.w.ok{background:var(--okbg);border-left-color:var(--ok)}
+.notes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:720px){.notes{grid-template-columns:minmax(0,1fr)}}
+.nc{border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0;background:var(--bg)}
+.nc h3{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.st{font-size:12px;font-weight:500;padding:2px 8px;border-radius:99px;background:var(--chip)}
+.st.on{background:var(--warnbg);color:var(--fg)}
+.nc p{margin:0;font-size:14px}
+.nc .lbl{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:2px}
+.nc .imp{font-size:15px;font-variant-numeric:tabular-nums}
+.hero{border-top:4px solid var(--gold)}
+.people{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:720px){.people{grid-template-columns:minmax(0,1fr)}}
+.pp{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
+.pp h3{font-size:18px;margin-bottom:2px}
+.pp .role{font-size:13px;color:var(--muted);margin:0 0 10px}
+.pp .v{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:4px 0}
+.pp .v span{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.pp .v span i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.pp .v b{font-size:30px;font-weight:500;font-variant-numeric:tabular-nums;line-height:1.1}
+.pp .m{font-size:13px;color:var(--muted);border-top:1px solid var(--line);margin-top:8px;padding-top:8px;font-variant-numeric:tabular-nums}
+.legend{display:flex;gap:16px;font-size:14px;margin-bottom:6px;flex-wrap:wrap}
+.legend i{display:inline-block;width:18px;height:4px;border-radius:2px;margin-right:6px;vertical-align:middle}
+svg{width:100%;height:auto;display:block}
+svg text{fill:var(--muted);font-family:var(--font);font-size:12px}
+.tabs{display:flex;gap:6px;margin-bottom:10px}
+.tabs button{font:inherit;font-size:14px;padding:6px 14px;border:1px solid var(--line);background:var(--chip);color:var(--fg);border-radius:8px;cursor:pointer}
+.tabs button[aria-pressed=true]{background:var(--navy);color:var(--bg);border-color:var(--navy)}
+.foot{font-size:13px;color:var(--muted);max-width:90ch}
+.badge{display:inline-block;font-size:12px;padding:2px 8px;border-radius:99px;background:var(--chip);color:var(--fg);margin-left:6px;font-weight:500}
+@media (prefers-reduced-motion:no-preference){.kpi b{transition:color .2s}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">CV Alusia Karya Persada · bahan diskusi</p>
+    <h1>Simulasi cashflow Opsi A dan Opsi B</h1>
+    <p class="sub">Ubah asumsi di panel, hasil dua opsi langsung berubah. Satuan semua angka: Rp juta. Pajak dihitung menurut opsi masing-masing. Ini simulasi dari asumsi, bukan data aktual dan bukan nasihat pajak.</p>
+  </header>
+
+  <div class="grid">
+    <aside class="panel" aria-label="Asumsi">
+      <div id="controls"></div>
+    </aside>
+
+    <main class="main">
+      <section class="card hero" aria-labelledby="hh">
+        <h2 id="hh">Yang diterima tiap orang per bulan</h2>
+        <p class="note" style="margin:0 0 12px">Rata-rata 12 bulan, bersih setelah pajak pribadi, gabungan gaji, imbalan kontrak, dan dividen. Satuan Rp juta.</p>
+        <div class="people" id="hero"></div>
+      </section>
+      <section class="card" aria-labelledby="hw">
+        <h2 id="hw">Peringatan angka</h2>
+        <div class="warns" id="warns"></div>
+      </section>
+
+      <section class="card" aria-labelledby="hn">
+        <h2 id="hn">Asumsi yang memengaruhi hasil</h2>
+        <p class="note" style="margin:0 0 12px">Empat hal ini dihitung otomatis dari ketentuan umum, belum dipastikan. Tiap kartu menunjukkan apa yang diasumsikan, seberapa besar pengaruhnya pada hasil sekarang, dan siapa yang perlu ditanya.</p>
+        <div class="notes" id="notes"></div>
+      </section>
+
+      <section class="two" id="kpis"></section>
+
+      <section class="card">
+        <h2>Saldo kas usaha selama 12 bulan</h2>
+        <div class="legend"><span><i style="background:var(--a)"></i>Opsi A: ubah akta CV</span><span><i style="background:var(--b)"></i>Opsi B: PT biasa</span></div>
+        <div id="chart" role="img" aria-label="Grafik saldo kas usaha per bulan untuk Opsi A dan B"></div>
+        <p class="note">Kas usaha belum termasuk dana pengembangan, yang disimpan di rekening terpisah. Dividen dibayar per kuartal (bulan 3, 6, 9, 12), jadi kas turun saat dividen dibayar.</p>
+      </section>
+
+      <section class="two" id="persons"></section>
+
+      <section class="card">
+        <h2>Rincian per bulan</h2>
+        <div class="tabs" id="tabs">
+          <button type="button" data-o="A" aria-pressed="false">Opsi A</button>
+          <button type="button" data-o="B" aria-pressed="true">Opsi B</button>
+        </div>
+        <div class="tbl" id="monthly"></div>
+      </section>
+
+      <p class="foot">Urutan hitung tiap bulan: omzet terbayar klien, dikurangi biaya proyek langsung, biaya operasional, lalu kewajiban kontrak (komisi iklan, royalti brand, insentif eksekusi). Sisanya dibagi ke dana gaji, pajak badan, dana pengembangan, dan dividen menurut saham. Pajak ditentukan otomatis dari isian Anda: cara hitung PPh badan dipilih yang paling murah dari yang memenuhi syarat, PPh 21 dan pajak dividen hanya di Opsi B. Pembayaran pajak dianggap lunas di bulan yang sama dan kerugian tidak dibawa ke bulan berikutnya. Semua ini perkiraan dari ketentuan umum untuk diskusi, bukan hitungan pajak resmi</p>
+    </section>
+    </main>
+  </div>
+</div>
+
+<script>
+/* ---------- konfigurasi input ---------- */
+var GROUPS = [
+ {t:'Modal dan biaya awal', open:true, items:[
+  {id:'modal',l:'Modal disetor (Rp juta)',min:0,max:200,step:1,v:20},
+  {id:'biayaA',l:'Biaya akta perubahan CV (Rp juta)',min:0,max:15,step:.5,v:0},
+  {id:'biayaB',l:'Biaya pendirian PT (Rp juta)',min:0,max:20,step:.5,v:10},
+  {note:'Biaya PT: Rp4 sampai 9,5 juta diurus sendiri, Rp6,5 sampai 15 juta lewat jasa. Biaya akta perubahan CV belum ada angkanya, isi jika sudah ada penawaran notaris.'}]},
+ {t:'Omzet', open:true, items:[
+  {id:'omzet',l:'Omzet bulan pertama, terbayar klien (Rp juta)',min:0,max:300,step:1,v:60},
+  {id:'tumbuh',l:'Pertumbuhan omzet per bulan (%)',min:-10,max:20,step:.5,v:0},
+  {id:'iklan',l:'Bagian omzet dari lead iklan (%)',min:0,max:100,step:5,v:50},
+  {id:'tepat',l:'Proyek tepat waktu dan sesuai anggaran (%)',min:0,max:100,step:5,v:100}]},
+ {t:'Biaya dari omzet', open:true, items:[
+  {id:'proyek',l:'Biaya proyek langsung (% omzet)',min:40,max:90,step:1,v:70},
+  {id:'ops',l:'Biaya operasional (% omzet)',min:0,max:25,step:.5,v:8}]},
+ {t:'Kewajiban kontrak', open:false, items:[
+  {id:'komisi',l:'Komisi iklan Toriqul (% nilai proyek dari iklan)',min:0,max:15,step:.5,v:5},
+  {id:'royalti',l:'Royalti brand Lucky (% omzet)',min:0,max:10,step:.5,v:2.5},
+  {id:'insentif',l:'Insentif eksekusi Sigit (% omzet)',min:0,max:5,step:.5,v:1.5}]},
+ {t:'Saham dan gaji', open:false, items:[
+  {id:'sT',l:'Saham Toriqul (%)',min:0,max:100,step:1,v:40},
+  {id:'sL',l:'Saham Lucky (%)',min:0,max:100,step:1,v:30},
+  {note:'Saham Sigit = sisanya.', dyn:'sSig'},
+  {id:'wT',l:'Bobot gaji Toriqul',min:0,max:3,step:.1,v:1.2},
+  {id:'wL',l:'Bobot gaji Lucky',min:0,max:3,step:.1,v:1.0},
+  {id:'wS',l:'Bobot gaji Sigit',min:0,max:3,step:.1,v:0.8},
+  {id:'gdasar',l:'Gaji dasar sementara per orang (Rp juta)',min:0,max:5,step:.25,v:1.5}]},
+ {t:'Pembagian sisa operasional', open:false, items:[
+  {id:'pGaji',l:'Dana gaji (% sisa)',min:0,max:80,step:1,v:50},
+  {id:'pPeng',l:'Dana pengembangan (% sisa)',min:0,max:60,step:1,v:20},
+  {note:'Pajak dihitung dari aturan tiap opsi. Dividen adalah sisa setelah gaji, pajak, dan pengembangan.'}]},
+ {t:'Contoh risiko Opsi A', open:false, items:[
+  {id:'tuntut',l:'Contoh tuntutan atau utang usaha (Rp juta)',min:0,max:500,step:10,v:100},
+  {note:'Dipakai di kartu risiko Opsi A untuk melihat berapa yang jatuh ke harta pribadi.'}]},
+ {t:'Pajak', open:true, items:[
+  {note:'Pajak dihitung otomatis dari omzet, laba, dan gaji yang Anda isi. Opsi A: PPh badan dari laba sebelum gaji. Opsi B: PPh badan setelah gaji, PPh 21 atas gaji dan imbalan, dan pajak dividen 10%.'},
+  {sel:'rezim',l:'Cara hitung PPh badan',opts:[['otomatis','Otomatis, pilih yang lebih murah'],['final','Paksa final UMKM 0,5% omzet'],['normal','Paksa tarif normal (22%)']],v:'otomatis'}]}
+];
+
+/* ---------- logika hitung ---------- */
+function pph21Month(m){
+  var a=m*12, bj=Math.min(a*0.05,6), pkp=Math.max(0,a-bj-54), t=0;
+  var L=[[60,.05],[250,.15],[500,.25],[5000,.30],[Infinity,.35]], lo=0;
+  for(var i=0;i<L.length;i++){var hi=L[i][0]; if(pkp>lo){t+=(Math.min(pkp,hi)-lo)*L[i][1];} lo=hi;}
+  return t/12;
+}
+function calcR(opt,p,regime){
+  var sSig=100-p.sT-p.sL, sh=[p.sT/100,p.sL/100,sSig/100], wsum=p.wT+p.wL+p.wS||1;
+  var ws=[p.wT/wsum,p.wL/wsum,p.wS/wsum];
+  var biaya=opt==='A'?p.biayaA:p.biayaB;
+  var TARIF=22, DIVR=10, gajiDed=(opt==='B')||!!p.gajiA, doPph21=(opt==='B')&&p.pph21!==false, doDiv=(opt==='B')&&p.divtax!==false;
+  var omTot=0; for(var q=0;q<12;q++) omTot+=p.omzet*Math.pow(1+p.tumbuh/100,q);
+  var ratio=omTot<=0?1:(omTot<=50000?Math.min(1,4800/omTot):0), effRate=TARIF*(1-0.5*ratio)/100;
+  var kas=p.modal-biaya, peng=0, divAcc=0, rows=[];
+  var tot={om:0,badan:0,pph:0,dvt:0,gross:[0,0,0],net:[0,0,0],gaji:[0,0,0],kon:[0,0,0],div:[0,0,0],pt:[0,0,0]};
+  var minKas=kas, minKasM=0, gajiMin=Infinity, negRem=false, negM=0;
+  for(var m=1;m<=12;m++){
+    var om=p.omzet*Math.pow(1+p.tumbuh/100,m-1);
+    var pr=om*p.proyek/100, op=om*p.ops/100;
+    var kom=om*p.iklan/100*p.komisi/100, roy=om*p.royalti/100, ins=om*p.tepat/100*p.insentif/100;
+    var sisa=om-pr-op-kom-roy-ins, pos=Math.max(0,sisa);
+    var gaji=pos*p.pGaji/100, pg=pos*p.pPeng/100;
+    var base=gajiDed?pos-gaji:pos;
+    var badan=regime==='final'? om*0.005 : Math.max(0,base)*effRate;
+    var rem=sisa-gaji-badan-pg;
+    var dv=Math.max(0,rem); if(rem<-1e-9&&!negRem){negRem=true;negM=m;}
+    divAcc+=dv; var paid=0; if(m%3===0){paid=divAcc;divAcc=0;}
+    kas+=sisa-gaji-badan-pg-paid; peng+=pg;
+    if(kas<minKas){minKas=kas;minKasM=m;}
+    var kon=[kom,roy,ins], pp=[0,0,0], dt=[0,0,0];
+    for(var i=0;i<3;i++){
+      var g=gaji*ws[i], inc=g+kon[i], d=dv*sh[i];
+      if(doPph21) pp[i]=pph21Month(inc);
+      if(doDiv) dt[i]=d*DIVR/100;
+      tot.gaji[i]+=g; tot.kon[i]+=kon[i]; tot.div[i]+=d; tot.pt[i]+=pp[i]+dt[i];
+      tot.gross[i]+=inc+d; tot.net[i]+=inc+d-pp[i]-dt[i];
+      if(m===1) gajiMin=Math.min(gajiMin,1e9);
+    }
+    tot.om+=om; tot.badan+=badan;
+    rows.push({m:m,om:om,biaya:pr+op,kon:kom+roy+ins,sisa:sisa,gaji:gaji,badan:badan,peng:pg,dv:dv,paid:paid,kas:kas,pengSaldo:peng,gajiI:ws.map(function(w){return gaji*w;})});
+  }
+  var gajiI0=rows[0].gajiI;
+  return {opt:opt,rows:rows,tot:tot,kasAkhir:kas,peng:peng,minKas:minKas,minKasM:minKasM,biaya:biaya,negRem:negRem,negM:negM,sSig:sSig,regime:regime,effRate:effRate,gajiI0:gajiI0,omTahun:tot.om};
+}
+
+function calc(opt,p){
+  var eligible=0, omTot=0; for(var q=0;q<12;q++) omTot+=p.omzet*Math.pow(1+p.tumbuh/100,q);
+  eligible=omTot<=4800;
+  var N=calcR(opt,p,'normal'), F=calcR(opt,p,'final');
+  var pick=p.rezim==='final'?'final':p.rezim==='normal'?'normal':(eligible&&F.tot.badan<N.tot.badan?'final':'normal');
+  var R=pick==='final'?F:N;
+  R.eligible=eligible; R.badanNormal=N.tot.badan; R.badanFinal=F.tot.badan; R.forced=p.rezim!=='otomatis'; R.omTot=omTot;
+  return R;
+}
+/* ---------- tampilan ---------- */
+var NAMES=['Toriqul','Lucky','Sigit'], KON=['Komisi iklan','Royalti brand','Insentif eksekusi'];
+function fmt(x,d){d=d==null?2:d;return x.toLocaleString('id-ID',{minimumFractionDigits:d,maximumFractionDigits:d});}
+function esc(s){return String(s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});}
+var P={}, T={}, tabOpt='B';
+
+function buildControls(){
+  var h='';
+  GROUPS.forEach(function(g){
+    h+='<details'+(g.open?' open':'')+'><summary>'+esc(g.t)+'</summary>';
+    g.items.forEach(function(it){
+      if(it.note){h+='<p class="note"'+(it.dyn?' id="dyn-'+it.dyn+'"':'')+'>'+esc(it.note)+'</p>';return;}
+      if(it.sel){h+='<div class="f" style="grid-template-columns:1fr"><label for="'+it.sel+'">'+esc(it.l)+'</label><select id="'+it.sel+'" style="font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)">'+it.opts.map(function(o){return '<option value="'+o[0]+'"'+(o[0]===it.v?' selected':'')+'>'+esc(o[1])+'</option>';}).join('')+'</select></div>';return;}
+      if(it.tg){h+='<label class="t"><input type="checkbox" id="'+it.tg+'"'+(it.v?' checked':'')+'><span>'+esc(it.l)+'<small>'+esc(it.s)+'</small></span></label>';return;}
+      h+='<div class="f"><label for="n_'+it.id+'">'+esc(it.l)+'</label>'
+        +'<input type="range" id="r_'+it.id+'" min="'+it.min+'" max="'+it.max+'" step="'+it.step+'" value="'+it.v+'" aria-label="'+esc(it.l)+'">'
+        +'<input type="number" id="n_'+it.id+'" min="'+it.min+'" max="'+it.max+'" step="'+it.step+'" value="'+it.v+'"></div>';
+    });
+    h+='</details>';
+  });
+  h+='<div style="padding-top:12px"><button type="button" id="reset" style="font:inherit;font-size:14px;padding:6px 14px;border:1px solid var(--line);background:var(--chip);color:var(--fg);border-radius:8px;cursor:pointer">Kembalikan ke angka awal</button></div>';
+  document.getElementById('controls').innerHTML=h;
+  GROUPS.forEach(function(g){g.items.forEach(function(it){
+    if(!it.id) return;
+    var r=document.getElementById('r_'+it.id), n=document.getElementById('n_'+it.id);
+    r.addEventListener('input',function(){n.value=r.value;update();});
+    n.addEventListener('input',function(){if(n.value!==''){r.value=n.value;}update();});
+  });});
+  GROUPS.forEach(function(g){g.items.forEach(function(it){var k=it.tg||it.sel; if(k)document.getElementById(k).addEventListener('change',update);});});
+  document.getElementById('reset').addEventListener('click',function(){
+    GROUPS.forEach(function(g){g.items.forEach(function(it){
+      if(it.id){document.getElementById('r_'+it.id).value=it.v;document.getElementById('n_'+it.id).value=it.v;}
+      if(it.tg){document.getElementById(it.tg).checked=it.v;}
+      if(it.sel){document.getElementById(it.sel).value=it.v;}
+    });}); update();
+  });
+}
+function readParams(){
+  var p={};
+  GROUPS.forEach(function(g){g.items.forEach(function(it){
+    if(it.id){var v=parseFloat(document.getElementById('n_'+it.id).value); p[it.id]=isNaN(v)?0:v;}
+    if(it.tg){p[it.tg]=document.getElementById(it.tg).checked;}
+    if(it.sel){p[it.sel]=document.getElementById(it.sel).value;}
+  });});
+  return p;
+}
+function cls(x){return x<0?' class="neg"':'';}
+
+function chart(A,B){
+  var W=720,H=300,ml=52,mr=16,mt=14,mb=34;
+  var vals=A.rows.map(function(r){return r.kas;}).concat(B.rows.map(function(r){return r.kas;}),[0]);
+  var lo=Math.min.apply(null,vals), hi=Math.max.apply(null,vals);
+  if(hi-lo<1){hi=lo+1;}
+  var step=Math.pow(10,Math.floor(Math.log10((hi-lo)/4))); var f=(hi-lo)/4/step; step*=f<=1?1:f<=2?2:f<=5?5:10;
+  lo=Math.floor(lo/step)*step; hi=Math.ceil(hi/step)*step;
+  function X(i){return ml+(W-ml-mr)*i/11;} function Y(v){return mt+(H-mt-mb)*(1-(v-lo)/(hi-lo));}
+  var s='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet">';
+  for(var v=lo;v<=hi+1e-9;v+=step){
+    s+='<line x1="'+ml+'" x2="'+(W-mr)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="var(--line)" stroke-width="'+(Math.abs(v)<1e-9?1.6:1)+'"/>';
+    s+='<text x="'+(ml-8)+'" y="'+(Y(v)+4)+'" text-anchor="end">'+fmt(v,step<1?1:0)+'</text>';
+  }
+  for(var i=0;i<12;i++) s+='<text x="'+X(i)+'" y="'+(H-12)+'" text-anchor="middle">'+(i+1)+'</text>';
+  s+='<text x="'+(ml+(W-ml-mr)/2)+'" y="'+(H-0)+'" text-anchor="middle" style="font-size:11px">bulan ke</text>';
+  function line(R,col){
+    var d=R.rows.map(function(r,i){return (i?'L':'M')+X(i).toFixed(1)+' '+Y(r.kas).toFixed(1);}).join(' ');
+    var e=R.rows[11];
+    return '<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>'
+      +'<circle cx="'+X(11)+'" cy="'+Y(e.kas)+'" r="5" fill="'+col+'"/>';
+  }
+  s+=line(A,'var(--a)')+line(B,'var(--b)');
+  s+='</svg>';
+  document.getElementById('chart').innerHTML=s;
+}
+
+function regLabel(R){return R.regime==='final'?'PPh badan: final UMKM 0,5% dari omzet.':'PPh badan: tarif normal'+(R.effRate<0.22-1e-9?' dengan diskon 50% untuk omzet kecil (efektif '+fmt(R.effRate*100,1)+'%).':' 22%.');}
+function kpiCard(R,label,cls2,sub){
+  var avg=R.tot.net.map(function(x){return x/12;});
+  var h='<div class="card '+cls2+'"><h3>'+label+'</h3><p class="note" style="margin-top:2px">'+sub+'</p><div class="kpis">'
+   +'<div class="kpi"><small>Kas usaha akhir bulan 12</small><b'+(R.kasAkhir<0?' class="neg"':'')+'>'+fmt(R.kasAkhir)+'</b></div>'
+   +'<div class="kpi"><small>Dana pengembangan terkumpul</small><b>'+fmt(R.peng)+'</b></div>'
+   +'<div class="kpi"><small>Kas terendah (bulan '+(R.minKasM||0)+')</small><b'+(R.minKas<0?' class="neg"':'')+'>'+fmt(R.minKas)+'</b></div>'
+   +'<div class="kpi"><small>Pajak badan 12 bulan</small><b>'+fmt(R.tot.badan)+'</b></div>'
+   +'</div></div>';
+  return h;
+}
+function personCard(R,label,cls2){
+  var t=R.tot, i, h='<div class="card '+cls2+'"><h3>Penerimaan per orang, rata-rata per bulan</h3><p class="note" style="margin-top:2px">'+label+'</p><div class="tbl"><table><thead><tr><th></th>';
+  NAMES.forEach(function(n){h+='<th>'+n+'</th>';}); h+='</tr></thead><tbody>';
+  function row(lbl,arr,neg,bold){h+='<tr'+(bold?' class="tot"':'')+'><td>'+lbl+'</td>';arr.forEach(function(x){h+='<td'+(neg&&x>0.0001?' class="neg"':'')+'>'+(neg&&x>0.0001?'-':'')+fmt(x)+'</td>';});h+='</tr>';}
+  row('Gaji',t.gaji.map(function(x){return x/12;}));
+  h+='<tr><td>Imbalan kontrak</td>';
+  t.kon.forEach(function(x,i){h+='<td>'+fmt(x/12)+'</td>';}); h+='</tr>';
+  row('Bagian dividen',t.div.map(function(x){return x/12;}));
+  row('Pajak pribadi',t.pt.map(function(x){return x/12;}),true);
+  row('Diterima bersih',t.net.map(function(x){return x/12;}),false,true);
+  var s=t.net[2]||0;
+  h+='<tr><td>Rasio terhadap Sigit</td>';
+  t.net.forEach(function(x){h+='<td>'+(s>0?fmt(x/s)+'×':'-')+'</td>';}); h+='</tr>';
+  h+='<tr><td>Total 12 bulan</td>'; t.net.forEach(function(x){h+='<td>'+fmt(x)+'</td>';}); h+='</tr>';
+  h+='</tbody></table></div><p class="note">Imbalan kontrak: komisi iklan (Toriqul), royalti brand (Lucky), insentif eksekusi (Sigit).</p></div>';
+  return h;
+}
+function monthly(R){
+  var h='<table><thead><tr><th>Bulan</th><th>Omzet</th><th>Biaya proyek + ops</th><th>Kewajiban kontrak</th><th>Sisa operasional</th><th>Dana gaji</th><th>Pajak badan</th><th>Dana pengembangan</th><th>Dividen dibayar</th><th>Kas usaha</th></tr></thead><tbody>';
+  R.rows.forEach(function(r){
+    h+='<tr><td>'+r.m+'</td><td>'+fmt(r.om)+'</td><td>'+fmt(r.biaya)+'</td><td>'+fmt(r.kon)+'</td><td'+cls(r.sisa)+'>'+fmt(r.sisa)+'</td><td>'+fmt(r.gaji)+'</td><td>'+fmt(r.badan)+'</td><td>'+fmt(r.peng)+'</td><td>'+(r.paid?fmt(r.paid):'-')+'</td><td'+cls(r.kas)+'>'+fmt(r.kas)+'</td></tr>';
+  });
+  h+='<tr class="tot"><td>Total</td><td>'+fmt(R.tot.om)+'</td><td>'+fmt(R.rows.reduce(function(a,r){return a+r.biaya;},0))+'</td><td>'+fmt(R.rows.reduce(function(a,r){return a+r.kon;},0))+'</td><td>'+fmt(R.rows.reduce(function(a,r){return a+r.sisa;},0))+'</td><td>'+fmt(R.rows.reduce(function(a,r){return a+r.gaji;},0))+'</td><td>'+fmt(R.tot.badan)+'</td><td>'+fmt(R.peng)+'</td><td>'+fmt(R.rows.reduce(function(a,r){return a+r.paid;},0))+'</td><td>'+fmt(R.kasAkhir)+'</td></tr>';
+  h+='</tbody></table>';
+  return h;
+}
+function warnings(A,B,p){
+  var w=[];
+  function add(c,t){w.push('<div class="w'+(c?' '+c:'')+'">'+t+'</div>');}
+  if(A.sSig<0) add('bad','Saham Toriqul dan Lucky melebihi 100%. Kurangi salah satunya.');
+  [A,B].forEach(function(R){
+    var n='Opsi '+R.opt;
+    if(R.minKas<0) add('bad',n+': kas usaha negatif di bulan '+R.minKasM+' (terendah '+fmt(R.minKas)+'). Dana tidak cukup menutup pengeluaran.');
+    if(R.negRem) add('bad',n+': mulai bulan '+R.negM+', gaji, pajak, dan dana pengembangan melebihi sisa operasional. Dividen nol dan kas terkuras.');
+    var lowest=Math.min.apply(null,R.gajiI0), idx=R.gajiI0.indexOf(lowest);
+    if(lowest<p.gdasar-1e-9) add('',n+': gaji '+NAMES[idx]+' di bulan 1 hanya '+fmt(lowest)+', di bawah gaji dasar sementara '+fmt(p.gdasar)+'. Selisihnya menjadi uang muka yang dihitung ulang per kuartal.');
+  });
+  if(p.modal-B.biaya<0) add('bad','Biaya pendirian PT lebih besar dari modal disetor.');
+  else if(B.biaya>=p.modal*0.5&&p.modal>0) add('','Biaya pendirian PT '+fmt(B.biaya)+' memakan '+fmt(B.biaya/p.modal*100,0)+'% dari modal. Modal kerja tinggal '+fmt(p.modal-B.biaya)+'.');
+  if(!A.eligible&&p.rezim==='final') add('bad','Omzet 12 bulan '+fmt(A.omTot,0)+' melebihi Rp4.800 juta, batas tarif final UMKM. Hasil ini tidak sah dipakai. Pilih "Otomatis".');
+  if(!A.eligible&&p.rezim==='otomatis') add('','Omzet 12 bulan '+fmt(A.omTot,0)+' melebihi Rp4.800 juta, jadi tarif final UMKM tidak dipakai dan PPh badan memakai tarif normal.');
+  if(!w.length) add('ok','Tidak ada peringatan. Kas usaha tetap positif selama 12 bulan di kedua opsi dengan asumsi saat ini.');
+  document.getElementById('warns').innerHTML=w.join('');
+}
+function notes(A,B,p){
+  function V(o,ch){return calc(o,Object.assign({},p,ch));}
+  var cards=[];
+  function card(title,on,asum,imp,who){
+    cards.push('<div class="nc"><h3>'+title+'<span class="st'+(on?' on':'')+'">'+(on?'Dipakai sekarang':'Tidak dipakai sekarang')+'</span></h3>'
+     +'<p><span class="lbl">Yang diasumsikan</span>'+asum+'</p>'
+     +'<p class="imp"><span class="lbl">Pengaruh pada hasil</span>'+imp+'</p>'
+     +'<p><span class="lbl">Tanya ke</span>'+who+'</p></div>');
+  }
+  /* 1 cara hitung PPh badan */
+  function rn(R){return R.regime==='final'?'final 0,5%':'tarif normal';}
+  card('Cara hitung PPh badan (dipilih otomatis)',A.regime==='final'||B.regime==='final',
+    'Usaha baru dengan omzet sampai Rp4.800 juta per tahun boleh memakai pajak final 0,5% dari omzet. Jika tidak, tarif normal 22% dipakai, dengan diskon 50% untuk bagian omzet sampai Rp4.800 juta (efektif 11%). Aplikasi memilih yang pajaknya lebih kecil. Batas waktu final: 3 tahun untuk PT, 4 tahun untuk CV.',
+    'Opsi A: '+rn(A)+'. Pajak 12 bulan: final '+fmt(A.badanFinal)+', normal '+fmt(A.badanNormal)+'. Opsi B: '+rn(B)+'. Final '+fmt(B.badanFinal)+', normal '+fmt(B.badanNormal)+' (Rp juta).',
+    'Konsultan pajak: syarat memakai final, cara memilih atau berpindah rezim, dan batas tahun.');
+  /* 2 gaji pesero A */
+  var gOff=V('A',{gajiA:false}), gOn=V('A',{gajiA:true});
+  card('Gaji pesero Opsi A tidak dibiayakan',false,
+    'Pesero CV umumnya mengambil bagian laba, bukan gaji, sehingga gaji tidak diakui sebagai biaya dan PPh badan dihitung dari laba sebelum gaji. Ini hanya berpengaruh jika dipakai tarif normal. Di Opsi B, gaji direktur diakui sebagai biaya.',
+    'Dengan tarif normal, pajak badan Opsi A 12 bulan: '+fmt(gOff.badanNormal)+' jika gaji tidak dibiayakan, '+fmt(gOn.badanNormal)+' jika dibiayakan. Selisih '+fmt(gOff.badanNormal-gOn.badanNormal)+' (Rp juta).',
+    'Konsultan pajak atau notaris: bagaimana gaji, komisi, dan royalti untuk pesero diperlakukan.');
+  /* 3 PPh21 dan dividen B */
+  var Bn=V('B',{pph21:false,divtax:false}).tot.net.reduce(function(a,x){return a+x;},0), Bt=B.tot.net.reduce(function(a,x){return a+x;},0);
+  card('PPh 21 dan pajak dividen Opsi B',true,
+    'PPh 21 dihitung setahun dengan PTKP Rp54 juta (belum menikah, tanpa tanggungan) dan biaya jabatan 5%. Dividen untuk perorangan dikenai pajak final 10%. Opsi A dianggap tidak punya kedua pajak ini.',
+    'Pajak pribadi Opsi B (gabungan ketiganya) '+fmt(B.tot.pt.reduce(function(a,x){return a+x;},0))+' selama 12 bulan, atau '+fmt((Bn-Bt)/12)+' per bulan (Rp juta).',
+    'Konsultan pajak: status PTKP masing-masing dan apakah dividen yang diputar kembali sebagai modal bebas pajak.');
+  /* 4 risiko utang A */
+  var sisaPribadi=Math.max(0,p.tuntut-Math.max(0,A.minKas));
+  card('Utang CV ditanggung harta pribadi (Opsi A)',true,
+    'Pada CV dengan semua pesero pengurus, kewajiban CV yang tidak tertutup kas bisa ditagih dari harta pribadi ketiganya. Simulasi ini hanya menghitung kas, jadi risiko ini ditampilkan terpisah.',
+    'Contoh tuntutan '+fmt(p.tuntut)+' dengan kas usaha terendah '+fmt(Math.max(0,A.minKas))+': sisa '+fmt(sisaPribadi)+' bisa ditagih dari harta pribadi. Pada PT, tanggung jawab dibatasi sebesar modal disetor (Rp juta).',
+    'Notaris: apakah batas tanggung jawab bisa ditulis di kontrak, dan akta asli untuk memastikan peran pengurus.');
+  document.getElementById('notes').innerHTML=cards.join('');
+}
+function hero(A,B){
+  var roles=['Pemilik modal dan iklan','Brand dan operasional','Teknis lapangan'];
+  var h='';
+  for(var i=0;i<3;i++){
+    var a=A.tot.net[i]/12, b=B.tot.net[i]/12;
+    h+='<div class="pp"><h3>'+NAMES[i]+'</h3><p class="role">'+roles[i]+'</p>'
+      +'<div class="v"><span><i style="background:var(--a)"></i>Opsi A</span><b>'+fmt(a)+'</b></div>'
+      +'<div class="v"><span><i style="background:var(--b)"></i>Opsi B</span><b>'+fmt(b)+'</b></div>'
+      +'<div class="m">Total 12 bulan: A '+fmt(A.tot.net[i])+' · B '+fmt(B.tot.net[i])+'</div>'
+      +'</div>';
+  }
+  document.getElementById('hero').innerHTML=h;
+}
+function update(){
+  var p=readParams(); P=p;
+  var A=calc('A',p), B=calc('B',p);
+  document.getElementById('dyn-sSig').textContent='Saham Sigit: '+fmt(A.sSig,0)+'%.';
+  hero(A,B); warnings(A,B,p); notes(A,B,p);
+  document.getElementById('kpis').innerHTML=kpiCard(A,'Opsi A: ubah akta CV','a','Biaya awal '+fmt(A.biaya)+', modal kerja awal '+fmt(p.modal-A.biaya)+'. '+regLabel(A))+kpiCard(B,'Opsi B: PT biasa','b','Biaya awal '+fmt(B.biaya)+', modal kerja awal '+fmt(p.modal-B.biaya)+'. '+regLabel(B));
+  chart(A,B);
+  document.getElementById('persons').innerHTML=personCard(A,'Opsi A: ubah akta CV','a')+personCard(B,'Opsi B: PT biasa','b');
+  T={A:A,B:B};
+  document.getElementById('monthly').innerHTML=monthly(T[tabOpt]);
+}
+document.getElementById('tabs').addEventListener('click',function(e){
+  var b=e.target.closest('button'); if(!b) return; tabOpt=b.getAttribute('data-o');
+  [].forEach.call(this.querySelectorAll('button'),function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});
+  document.getElementById('monthly').innerHTML=monthly(T[tabOpt]);
+});
+buildControls(); update();
+</script>
+
+</body>
+</html>
